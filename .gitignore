@@ -1,0 +1,4 @@
+# matlab / libreoffice / cisco artifacts
+*.access^
+*.asv
+*.~lock*
