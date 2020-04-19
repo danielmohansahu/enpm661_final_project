@@ -4,12 +4,12 @@ clc
 %% Import the stl file
 tic
 model1 = createpde;
-gd1 = importGeometry(model1,'CAD model\Part1.stl');
+gd1 = importGeometry(model1,'../models/Part1.STL');
 generateMesh(model1);
 % pdegplot(model1,'FaceLabels','on','EdgeLabels','on','FaceAlpha',0.5);
 % hold on
 model2 = createpde;
-gd2 = importGeometry(model2,'CAD model\Part2.stl');
+gd2 = importGeometry(model2,'../models/Part2.STL');
 generateMesh(model2);
 % pdegplot(model2,'FaceLabels','on','EdgeLabels','on','FaceAlpha',0.5);
 % figure;scatter3(model2.Mesh.Nodes(1,:), model2.Mesh.Nodes(2,:), model2.Mesh.Nodes(3,:),'b');
@@ -492,14 +492,12 @@ toc
 % ylabel('Y');
 % zlabel('Z');
 % % axis equal
-fv1 = stlread('CAD model\Part1.stl');
-rotateV1 = rotateModel1 * fv1.vertices';
-fv1.vertices = rotateV1';
-patch(fv1,'FaceColor',       [0.8 0.8 1.0], ...
-         'EdgeColor',       'k',        ...
-         'EdgeAlpha', 0.2,               ...
-         'FaceLighting',    'gouraud',     ...
-         'AmbientStrength', 0.15);
+fv1 = stlread('../models/Part1.STL');
+rotateV1 = rotateModel1 * fv1.Points';
+fv1 = triangulation(fv1.ConnectivityList, rotateV1');
+patch('Faces', fv1.ConnectivityList, 'Vertices', fv1.Points, ...
+      'FaceColor', [0.8 0.8 1.0], 'EdgeColor', 'k', ...
+      'EdgeAlpha', 0.2, 'FaceLighting', 'gouraud','AmbientStrength', 0.15);
 
 % Add a camera light, and tone down the specular highlighting
 camlight('headlight');
@@ -509,17 +507,18 @@ material('dull');
 axis('image');
 view([-135 35]);
 hold on
-fv2 = stlread('CAD model\Part2.stl');
-fv2.vertices(:, 3) = fv2.vertices(:, 3); 
-rotateV2 = rRotateMatrix{1} * fv2.vertices';
-fv2.vertices = rotateV2';
+fv2 = stlread('../models/Part2.STL');
+rotateV2 = rRotateMatrix{1} * fv2.Points';
+fv2 = triangulation(fv2.ConnectivityList, rotateV2');
 rotateP2 = rRotateMatrix{1} * P2';
 P2 = rotateP2';
-plot_handle = patch(fv2,'FaceColor',       [0.8 0.8 1.0], ...
-         'EdgeColor',       'k',        ...
-         'EdgeAlpha', 0.2,               ...
-         'FaceLighting',    'gouraud',     ...
-         'AmbientStrength', 0.15);
+plot_handle = patch('Faces', fv2.ConnectivityList, ...
+                    'Vertices', fv2.Points, ...
+                    'FaceColor', [0.8 0.8 1.0], ...
+                    'EdgeColor', 'k', ...
+                    'EdgeAlpha', 0.2, ...
+                    'FaceLighting', 'gouraud', ...
+                    'AmbientStrength', 0.15);
 
 % Add a camera light, and tone down the specular highlighting
 % camlight('headlight');
@@ -535,9 +534,9 @@ while (i <= size(pathMid,2))
     rotateP2 = rRotateMatrix{i} * P2';
     P2 = rotateP2';
 %     set(plot_handle,'XData',rotateP2(1,:),'YData',rotateP2(2,:),'ZData',rotateP2(3,:));
-    rotateV2 = rRotateMatrix{i} * fv2.vertices';
-    fv2.vertices = rotateV2';
-    set(plot_handle, 'Faces',fv2.faces, 'Vertices',fv2.vertices);
+    rotateV2 = rRotateMatrix{i} * fv2.Points';
+    fv2 = triangulation(fv2.ConnectivityList, rotateV2');
+    set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
 %     patch(fv2,'FaceColor',       [0.8 0.8 1.0], ...
 %              'EdgeColor',       'black',        ...
 %              'FaceLighting',    'gouraud',     ...
