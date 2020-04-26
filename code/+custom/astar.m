@@ -39,7 +39,7 @@ while(~success && noOfSteps <= maxStepSize)
         newNode = rotate * current_node;
         
         % check if this new node is in a state of collision
-        if isCollision(newNode)
+        if custom.isCollision(newNode)
             break;
         end
         
