@@ -444,6 +444,7 @@ if (search == false)
             if (parentLeft == vecLeft2)
                 if (parentRight == vecRight2)
                     search = false;
+                    index
                     break;
                 end
             end
