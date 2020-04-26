@@ -59,21 +59,20 @@ rotateZ = [cosd(angles(3)), -sind(angles(3)), 0;
 rotateModel1 = rotateX * rotateY * rotateZ;
 rotate = rotateX * rotateY * rotateZ;
 rotateP1 = rotate * P1';
-vecMid1_n = rotate * vecMid1;
-vecLeft1_n = rotate * vecLeft1;
-vecRight1_n = rotate * vecRight1;
 Vector1_n = rotate * Vector1;
 
 % perform A* path search
-[search, nodes] = astar(vecMid2, vecLeft2, vecRight2, vecMid1_n, vecLeft1_n, vecRight1_n);
+[success, nodes] = astar(Vector2, Vector1_n);
 
 %% Tracing back the path
 vecMid2 = [-0.8192; 6.604e-11; 0.5736];
 vecLeft2 = [0.766; -4.795e-08; 0.6428];
 vecRight2 = [0.9397; -2.121e-08; 0.342];
-if ~search
-    [pathMid, rRotateMatrix] = backtrack(nodes, vecMid2, vecLeft2, vecRight2);
+if ~success
+    error("Path search failed.");
 end
+
+[path, rRotateMatrix] = backtrack(nodes, [vecMid2, vecLeft2, vecRight2]);
 
 toc
 %% Display the path
@@ -131,35 +130,15 @@ plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'FaceLighting', 'gouraud', ...
                     'AmbientStrength', 0.15);
 
-% Add a camera light, and tone down the specular highlighting
-% camlight('headlight');
-% material('dull');
-
-% Fix the axes scaling, and set a nice view angle
-% axis('image');
-% view([-135 35]);
-% hold on
-% plot_handle = scatter3(rotateP2(1,:),rotateP2(2,:),rotateP2(3,:), 'r');
 i = 2;
-while (i <= size(pathMid,2))
+while (i < size(path,3))
     rotateP2 = rRotateMatrix{i} * P2';
     P2 = rotateP2';
-%     set(plot_handle,'XData',rotateP2(1,:),'YData',rotateP2(2,:),'ZData',rotateP2(3,:));
+
     rotateV2 = rRotateMatrix{i} * fv2.Points';
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
-%     patch(fv2,'FaceColor',       [0.8 0.8 1.0], ...
-%              'EdgeColor',       'black',        ...
-%              'FaceLighting',    'gouraud',     ...
-%              'AmbientStrength', 0.15);
 
-    % Add a camera light, and tone down the specular highlighting
-%     camlight('headlight');
-%     material('dull');
-
-    % Fix the axes scaling, and set a nice view angle
-%     axis('image');
-%     view([-135 35]);
     pause(0.05)
     i = i + 1;
 end
