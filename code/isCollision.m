@@ -1,4 +1,4 @@
-function collision = isCollision(newNodeMid, newNodeLeft, newNodeRight)
+function collision = isCollision(newNode)
 
 % placeholder
 collision = false;
