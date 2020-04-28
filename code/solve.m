@@ -29,6 +29,16 @@ F2 = faceNormal(TR2);
 P2 = incenter(TR2);
 P2 = P2 - origin';
 
+
+[collision, I] = custom.isCollision(TR1,TR2);
+if custom.isCollision(TR1, TR2)
+    I
+    error("Given meshes are already in collision!");
+end
+    
+
+
+
 %% Choosing the vectors on surface (hardcoded) and "breaking" bones.
 
 vecMid1 = [0.8192; -1.979e-07; -0.5736];
