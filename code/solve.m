@@ -36,14 +36,14 @@ od_mesh = alphaShape(TR2.Points);
 % pertinent features in the first mesh to perform collision detection
 od_features = TR1.Points(featureEdges(TR1,pi/2),:);
 
-offset = 0;
-while custom.isCollision(od_mesh, od_features + [0,0,offset])
-    offset = offset + 0.1;
-end
-
-fprintf("Starting with a Z offset of %d\n",offset);
-od_features = od_features + [0,0,offset];
-TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
+% offset = 0;
+% while custom.isCollision(od_mesh, od_features + [0,0,offset])
+%     offset = offset + 0.1;
+% end
+% 
+% fprintf("Starting with a Z offset of %d\n",offset);
+% od_features = od_features + [0,0,offset];
+% TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
 
 %% Choosing the vectors on surface (hardcoded) and "breaking" bones.
 
@@ -56,7 +56,6 @@ vecRight2 = [0.9397; -2.121e-08; 0.342];
 Vector1 = [vecMid1, vecLeft1, vecRight1];
 Vector2 = [vecMid2, vecLeft2, vecRight2];
 
-offset = [0,0,30];
 angles = [5 10 20];
 rotateX = [1,      0,                 0;
             0, cosd(angles(1)),  -sind(angles(1));
@@ -68,12 +67,24 @@ rotateZ = [cosd(angles(3)), -sind(angles(3)), 0;
             sind(angles(3)),  cosd(angles(3)), 0;
                     0,               0,        1];
 rotateModel1 = rotateX * rotateY * rotateZ;
-rotate = rotateX * rotateY * rotateZ;
-Vector1_n = rotate * Vector1;
+Vector1_n = rotateModel1 * Vector1;
 
 % update current state variables
-od_features = (rotate * (od_features+offset)')';
-TR1 = triangulation(TR1.ConnectivityList, TR1.Points + offset);
+od_features = (rotateModel1 * (od_features)')';
+
+%% Initial Avoidance
+
+% the rotation process probably brought us into collision; 
+%  increase offset to compensate
+
+offset = 0;
+while custom.isCollision(od_mesh, od_features + [0,0,offset])
+    offset = offset + 0.1;
+end
+
+fprintf("New Z offset of %d\n",offset);
+od_features = od_features + [0,0,offset];
+TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
 
 %% A* Search
 % sanity check that we're not starting in collision
@@ -81,8 +92,18 @@ if custom.isCollision(od_mesh, od_features)
     error("Starting in a collision; this isn't allowed.");
 end
 
+% plot(od_mesh);
+% hold on;
+% rotateV1 = rotateModel1 * (TR1.Points)';
+% fv1 = triangulation(TR1.ConnectivityList, rotateV1');
+% trisurf(fv1);
+
 % perform A* path search
 [success, nodes] = custom.astar(Vector2,Vector1_n,od_mesh,od_features);
+if ~success
+    error("Path search failed.");
+end
+
 
 %% Tracing back the path
 
@@ -90,9 +111,6 @@ end
 vecMid2 = [-0.8192; 6.604e-11; 0.5736];
 vecLeft2 = [0.766; -4.795e-08; 0.6428];
 vecRight2 = [0.9397; -2.121e-08; 0.342];
-if ~success
-    error("Path search failed.");
-end
 
 [path, rRotateMatrix] = custom.backtrack(nodes, [vecMid2, vecLeft2, vecRight2]);
 
@@ -134,7 +152,7 @@ while (i ~= size(path,3))
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
 
-    pause(0.1)
+    pause(0.02)
     i = i + 1;
 end
 hold off
