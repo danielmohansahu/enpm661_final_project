@@ -1,4 +1,4 @@
-function [success, nodes] = astar(start_nodes, target_nodes)
+function [success, nodes] = astar(start_nodes, target_nodes, mesh, features)
 
 % A* costs and parameters
 minCost = 1e-02;
@@ -39,7 +39,7 @@ while(~success && noOfSteps <= maxStepSize)
         newNode = rotate * current_node;
         
         % check if this new node is in a state of collision
-        if custom.isCollision(newNode)
+        if custom.isCollision(mesh, (rotate*features')')
             break;
         end
         
