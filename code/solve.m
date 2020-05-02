@@ -1,6 +1,9 @@
 close all
 clear all
 clc
+% turn off point warnings
+warning('off','MATLAB:triangulation:PtsNotInTriWarnId');
+
 %% Import the stl file
 tic
 model1 = createpde;
@@ -16,18 +19,31 @@ generateMesh(model2);
 Part1 = [model1.Mesh.Nodes(1,:)', model1.Mesh.Nodes(2,:)', model1.Mesh.Nodes(3,:)'];
 k = boundary(Part1, 1);
 TR1 = triangulation(k,Part1);
-F1 = faceNormal(TR1);
-P1 = incenter(TR1);
 origin = [38.6; 33.7960; 141.5215];
-P1 = P1 - origin';
 
 % Part2
 Part2 = [model2.Mesh.Nodes(1,:)', model2.Mesh.Nodes(2,:)', model2.Mesh.Nodes(3,:)'];
 k = boundary(Part2, 1);
 TR2 = triangulation(k,Part2);
-F2 = faceNormal(TR2);
 P2 = incenter(TR2);
 P2 = P2 - origin';
+
+%% Collision Detection Logic
+
+% 3D collision detection mesh
+od_mesh = alphaShape(TR2.Points);
+
+% pertinent features in the first mesh to perform collision detection
+od_features = TR1.Points(featureEdges(TR1,pi/2),:);
+
+% offset = 0;
+% while custom.isCollision(od_mesh, od_features + [0,0,offset])
+%     offset = offset + 0.1;
+% end
+% 
+% fprintf("Starting with a Z offset of %d\n",offset);
+% od_features = od_features + [0,0,offset];
+% TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
 
 %% Choosing the vectors on surface (hardcoded) and "breaking" bones.
 
@@ -40,8 +56,7 @@ vecRight2 = [0.9397; -2.121e-08; 0.342];
 Vector1 = [vecMid1, vecLeft1, vecRight1];
 Vector2 = [vecMid2, vecLeft2, vecRight2];
 
-% Rotating the vector around Z-axis
-angles = [5 10 30];
+angles = [5 10 20];
 rotateX = [1,      0,                 0;
             0, cosd(angles(1)),  -sind(angles(1));
             0, sind(angles(1)),  cosd(angles(1))];
@@ -52,14 +67,43 @@ rotateZ = [cosd(angles(3)), -sind(angles(3)), 0;
             sind(angles(3)),  cosd(angles(3)), 0;
                     0,               0,        1];
 rotateModel1 = rotateX * rotateY * rotateZ;
-rotate = rotateX * rotateY * rotateZ;
-rotateP1 = rotate * P1';
-Vector1_n = rotate * Vector1;
+Vector1_n = rotateModel1 * Vector1;
+
+% update current state variables
+od_features = (rotateModel1 * (od_features)')';
+
+%% Initial Avoidance
+
+% the rotation process probably brought us into collision; 
+%  increase offset to compensate
+
+offset = 0;
+while custom.isCollision(od_mesh, od_features + [0,0,offset])
+    offset = offset + 0.1;
+end
+
+fprintf("New Z offset of %d\n",offset);
+od_features = od_features + [0,0,offset];
+TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
 
 %% A* Search
+% sanity check that we're not starting in collision
+if custom.isCollision(od_mesh, od_features)
+    error("Starting in a collision; this isn't allowed.");
+end
+
+% plot(od_mesh);
+% hold on;
+% rotateV1 = rotateModel1 * (TR1.Points)';
+% fv1 = triangulation(TR1.ConnectivityList, rotateV1');
+% trisurf(fv1);
 
 % perform A* path search
-[success, nodes] = custom.astar(Vector2, Vector1_n);
+[success, nodes] = custom.astar(Vector2,Vector1_n,od_mesh,od_features);
+if ~success
+    error("Path search failed.");
+end
+
 
 %% Tracing back the path
 
@@ -67,44 +111,14 @@ Vector1_n = rotate * Vector1;
 vecMid2 = [-0.8192; 6.604e-11; 0.5736];
 vecLeft2 = [0.766; -4.795e-08; 0.6428];
 vecRight2 = [0.9397; -2.121e-08; 0.342];
-if ~success
-    error("Path search failed.");
-end
 
 [path, rRotateMatrix] = custom.backtrack(nodes, [vecMid2, vecLeft2, vecRight2]);
 
-
 toc
 %% Display the path
-% % Display the rotated part1
-% rotateP1 = rotateZ * P1';
-% subplot(2,1,1);
-% scatter3(P1(:,1),P1(:,2),P1(:,3), 'g');
-% hold on
-% scatter3(P2(:,1),P2(:,2),P2(:,3), 'r');
-% xlabel('X');
-% ylabel('Y');
-% zlabel('Z');
-% hold off
-% subplot(2,1,2);
-% scatter3(rotateP1(1,:),rotateP1(2,:),rotateP1(3,:), 'g');
-% hold on
-% scatter3(0, 0, 0, 'k', 'filled');
-% scatter3(rotateP2(1,:),rotateP2(2,:),rotateP2(3,:), 'r');
-% xlabel('X');
-% ylabel('Y');
-% zlabel('Z');
-% hold off
 
-% scatter3(rotateP1(1,:),rotateP1(2,:),rotateP1(3,:), 'g');
-% hold on
-% xlabel('X');
-% ylabel('Y');
-% zlabel('Z');
-% % axis equal
-fv1 = stlread('../models/Part1.STL');
-rotateV1 = rotateModel1 * fv1.Points';
-fv1 = triangulation(fv1.ConnectivityList, rotateV1');
+rotateV1 = rotateModel1 * (TR1.Points)';
+fv1 = triangulation(TR1.ConnectivityList, rotateV1');
 patch('Faces', fv1.ConnectivityList, 'Vertices', fv1.Points, ...
       'FaceColor', [0.8 0.8 1.0], 'EdgeColor', 'k', ...
       'EdgeAlpha', 0.2, 'FaceLighting', 'gouraud','AmbientStrength', 0.15);
@@ -117,9 +131,8 @@ material('dull');
 axis('image');
 view([-135 35]);
 hold on
-fv2 = stlread('../models/Part2.STL');
-rotateV2 = rRotateMatrix{1} * fv2.Points';
-fv2 = triangulation(fv2.ConnectivityList, rotateV2');
+rotateV2 = rRotateMatrix{1} * TR2.Points';
+fv2 = triangulation(TR2.ConnectivityList, rotateV2');
 rotateP2 = rRotateMatrix{1} * P2';
 P2 = rotateP2';
 plot_handle = patch('Faces', fv2.ConnectivityList, ...
@@ -139,7 +152,7 @@ while (i ~= size(path,3))
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
 
-    pause(0.01)
+    pause(0.02)
     i = i + 1;
 end
 hold off

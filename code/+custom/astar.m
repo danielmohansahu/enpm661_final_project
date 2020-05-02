@@ -1,8 +1,9 @@
-function [success, nodes] = astar(start_nodes, target_nodes)
+function [success, nodes] = astar(start_nodes, target_nodes, mesh, features)
 
 % A* costs and parameters
 minCost = 1e-02;
 step = [0.1; 0.1; 0.1];
+zstep = 0.1;
 maxStepSize = 1000;
 
 % other loop variables
@@ -15,8 +16,12 @@ qCost = [];
 nodes.nodes = start_nodes;
 current_node = start_nodes;
 nodes.cost = 0;
+current_cost = 0;
 nodes.parents = zeros(size(start_nodes));
+nodes.height = 0;
+current_height = 0;
 nodes.rotationM = {[0, 0, 0; 0, 0, 0; 0, 0, 0]};
+current_rot = nodes.rotationM{1};
 
 % perform A* search
 while(~success && noOfSteps <= maxStepSize)
@@ -39,14 +44,14 @@ while(~success && noOfSteps <= maxStepSize)
         newNode = rotate * current_node;
         
         % check if this new node is in a state of collision
-        if custom.isCollision(newNode)
+        if custom.isCollision(mesh, (rotate*(features+[0,0,current_height])')')
             break;
         end
         
         % check if this new node is already found
         already_found = false;
         for i = 1 : size(nodes.nodes, 3)
-            if all( (newNode == nodes.nodes(:,:,i)) )
+            if all( (newNode == nodes.nodes(:,:,i)) & current_height == nodes.height(i) )
                 already_found = true;
                 break;
             end
@@ -63,6 +68,7 @@ while(~success && noOfSteps <= maxStepSize)
             nodes.nodes(:,:,dim) = newNode;
             nodes.parents(:,:,dim) = current_node;
             nodes.cost(:,dim) = cost;
+            nodes.height(:,dim) = current_height;
             nodes.rotationM{dim} = rotate;
             
             
@@ -74,13 +80,25 @@ while(~success && noOfSteps <= maxStepSize)
         end
     end
     
+    % we can also move in Z to avoid collisions
+    dim = size(qCost,2) + 1;
+    queue(:,:,dim) = current_node;
+    qCost(:,dim) = current_cost + zstep;
+    nodes.nodes(:,:,dim) = current_node;
+    nodes.parents(:,:,dim) = current_node;
+    nodes.cost(:,dim) = current_cost + zstep;
+    nodes.height(:,dim) = current_height + zstep;
+    nodes.rotationM{dim} = current_rot;
+    
     % update loop variables
-    [~, I] = min(qCost);
+    [current_cost, I] = min(qCost);
     current_node = queue(:,:,I);
-    current_node(:,1);
+    current_height = nodes.height(I);
+    current_rot = nodes.rotationM{I};
     queue(:,:,I) = [];
     qCost(:, I) = [];
     noOfSteps = noOfSteps + 1;
+    
 end
 
 end % function
