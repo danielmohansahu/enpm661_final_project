@@ -36,15 +36,6 @@ od_mesh = alphaShape(TR2.Points);
 % pertinent features in the first mesh to perform collision detection
 od_features = TR1.Points(featureEdges(TR1,pi/2),:);
 
-% offset = 0;
-% while custom.isCollision(od_mesh, od_features + [0,0,offset])
-%     offset = offset + 0.1;
-% end
-% 
-% fprintf("Starting with a Z offset of %d\n",offset);
-% od_features = od_features + [0,0,offset];
-% TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
-
 %% Choosing the vectors on surface (hardcoded) and "breaking" bones.
 
 vecMid1 = [0.8192; -1.979e-07; -0.5736];
@@ -83,12 +74,11 @@ while custom.isCollision(od_mesh, od_features + [0,0,offset])
 end
 
 fprintf("New Z offset of %d\n",offset);
-od_features = od_features + [0,0,offset];
-TR1 = triangulation(TR1.ConnectivityList, TR1.Points + [0,0,offset]);
+od_features = od_features;
 
 %% A* Search
 % sanity check that we're not starting in collision
-if custom.isCollision(od_mesh, od_features)
+if custom.isCollision(od_mesh, od_features + [0,0,offset])
     error("Starting in a collision; this isn't allowed.");
 end
 
@@ -99,7 +89,7 @@ end
 % trisurf(fv1);
 
 % perform A* path search
-[success, nodes] = custom.astar(Vector2,Vector1_n,od_mesh,od_features);
+[success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
 if ~success
     error("Path search failed.");
 end
@@ -112,7 +102,7 @@ vecMid2 = [-0.8192; 6.604e-11; 0.5736];
 vecLeft2 = [0.766; -4.795e-08; 0.6428];
 vecRight2 = [0.9397; -2.121e-08; 0.342];
 
-[path, rRotateMatrix] = custom.backtrack(nodes, [vecMid2, vecLeft2, vecRight2]);
+[path, rRotateMatrix, rHeights] = custom.backtrack(nodes, [vecMid2, vecLeft2, vecRight2]);
 
 toc
 %% Display the path
@@ -131,10 +121,8 @@ material('dull');
 axis('image');
 view([-135 35]);
 hold on
-rotateV2 = rRotateMatrix{1} * TR2.Points';
+rotateV2 = rRotateMatrix{1} * (TR2.Points - [0,0,rHeights{1}])';
 fv2 = triangulation(TR2.ConnectivityList, rotateV2');
-rotateP2 = rRotateMatrix{1} * P2';
-P2 = rotateP2';
 plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'Vertices', fv2.Points, ...
                     'FaceColor', [0.8 0.8 1.0], ...
@@ -145,10 +133,7 @@ plot_handle = patch('Faces', fv2.ConnectivityList, ...
 
 i = 2;
 while (i ~= size(path,3))
-    rotateP2 = rRotateMatrix{i} * P2';
-    P2 = rotateP2';
-
-    rotateV2 = rRotateMatrix{i} * fv2.Points';
+    rotateV2 = rRotateMatrix{i} * (fv2.Points - [0,0,rHeights{i}-rHeights{i-1}])';
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
 

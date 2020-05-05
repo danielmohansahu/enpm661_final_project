@@ -1,4 +1,4 @@
-function [success, nodes] = astar(start_nodes, target_nodes, mesh, features)
+function [success, nodes] = astar(start_nodes, target_nodes, start_height, mesh, features)
 
 % A* costs and parameters
 minCost = 1e-02;
@@ -15,12 +15,13 @@ queue = [];
 qCost = [];
 nodes.nodes = start_nodes;
 current_node = start_nodes;
-nodes.cost = 0;
-current_cost = 0;
+nodes.cost = start_height;
+current_cost = start_height;
 nodes.parents = zeros(size(start_nodes));
-nodes.height = 0;
-current_height = 0;
-nodes.rotationM = {[0, 0, 0; 0, 0, 0; 0, 0, 0]};
+nodes.parent_height = start_height;
+nodes.height = start_height;
+current_height = start_height;
+nodes.rotationM = {[1, 0, 0; 0, 1, 0; 0, 0, 1]};
 current_rot = nodes.rotationM{1};
 
 % perform A* search
@@ -45,50 +46,68 @@ while(~success && noOfSteps <= maxStepSize)
         
         % check if this new node is in a state of collision
         if custom.isCollision(mesh, (rotate*(features+[0,0,current_height])')')
-            break;
+            continue;
         end
         
         % check if this new node is already found
-        already_found = false;
         for i = 1 : size(nodes.nodes, 3)
             if all( (newNode == nodes.nodes(:,:,i)) & current_height == nodes.height(i) )
-                already_found = true;
-                break;
+                continue;
             end
         end
         
         % if this isn't our goal node calculate its costs and add it
-        if ~already_found
-            % calculate cost; add to queue and nodes list
-            dim = size(qCost,2) + 1;
-            queue(:,:,dim) = newNode;
-            cost = norm(cross(target_nodes(:,1), newNode(:,1))) + norm(cross(target_nodes(:,2), newNode(:,2))) + norm(cross(target_nodes(:,3), newNode(:,3)));
-            qCost(:,dim) = cost;
-            
-            nodes.nodes(:,:,dim) = newNode;
-            nodes.parents(:,:,dim) = current_node;
-            nodes.cost(:,dim) = cost;
-            nodes.height(:,dim) = current_height;
-            nodes.rotationM{dim} = rotate;
-            
-            
-            % If cost is less or equal to min cost then stop the search
-            if (cost <= minCost)
-                success = true;
-                break;
-            end
+        dimq = size(qCost,2) + 1;
+        queue(:,:,dimq) = newNode;
+        cost = norm(cross(target_nodes(:,1), newNode(:,1))) + norm(cross(target_nodes(:,2), newNode(:,2))) + norm(cross(target_nodes(:,3), newNode(:,3)));
+        qCost(:,dimq) = cost;
+
+        dimn = size(nodes.cost,2) + 1;
+        nodes.nodes(:,:,dimn) = newNode;
+        nodes.parents(:,:,dimn) = current_node;
+        nodes.parent_height(dimn) = current_height;
+        nodes.cost(:,dimn) = cost;
+        nodes.height(:,dimn) = current_height;
+        nodes.rotationM{dimn} = rotate;
+
+        % If cost is less or equal to min cost then stop the search
+        if (cost <= minCost)
+            success = true;
+            break;
         end
     end
     
+    if success
+        break;
+    end
+    
     % we can also move in Z to avoid collisions
-    dim = size(qCost,2) + 1;
-    queue(:,:,dim) = current_node;
-    qCost(:,dim) = current_cost + zstep;
-    nodes.nodes(:,:,dim) = current_node;
-    nodes.parents(:,:,dim) = current_node;
-    nodes.cost(:,dim) = current_cost + zstep;
-    nodes.height(:,dim) = current_height + zstep;
-    nodes.rotationM{dim} = current_rot;
+    for dz = zstep:zstep
+        % check if this new node is already found
+        for i = 1 : size(nodes.nodes, 3)
+            if all( (current_node == nodes.nodes(:,:,i)) & current_height+dz == nodes.height(i) )
+                continue;
+            end
+        end
+        
+        % check if this would bring us into collision
+        if custom.isCollision(mesh, (current_rot*(features+[0,0,current_height+dz])')')
+            continue;
+        end
+        
+        dimq = size(qCost,2) + 1;
+        cost = current_cost;
+        queue(:,:,dimq) = current_node;
+        qCost(:,dimq) = cost;
+
+        dimn = size(nodes.cost,2) + 1;
+        nodes.nodes(:,:,dimn) = current_node;
+        nodes.parents(:,:,dimn) = current_node;
+        nodes.parent_height(dimn) = current_height;
+        nodes.cost(:,dimn) = cost;
+        nodes.height(:,dimn) = current_height + dz;
+        nodes.rotationM{dimn} = current_rot;
+    end
     
     % update loop variables
     [current_cost, I] = min(qCost);
@@ -99,6 +118,30 @@ while(~success && noOfSteps <= maxStepSize)
     qCost(:, I) = [];
     noOfSteps = noOfSteps + 1;
     
+end
+
+% if we've succeeded; try to correct for any Z motion
+if success
+    node = nodes.nodes(:,:,end);
+    cost = nodes.cost(end);
+    parent_height = nodes.height(end);
+    rot = nodes.rotationM{end};
+
+    height = parent_height - zstep;
+    while (height > 0) && ~custom.isCollision(mesh, (node*(features+[0,0,height])')')
+        dimn = size(nodes.cost,2) + 1;
+        cost = cost - zstep;
+        
+        nodes.nodes(:,:,dimn) = node;
+        nodes.parents(:,:,dimn) = node;
+        nodes.parent_height(dimn) = parent_height;
+        nodes.cost(:,dimn) = cost;
+        nodes.height(:,dimn) = height;
+        nodes.rotationM{dimn} = rot;
+        
+        parent_height = height;
+        height = parent_height - zstep;
+    end
 end
 
 end % function
