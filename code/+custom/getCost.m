@@ -1,0 +1,6 @@
+% calculate cost (between target and current node)
+function cost = getCost(target, node)
+cost = norm(cross(target(:,1), node.node(:,1))) ...
+        + norm(cross(target(:,2), node.node(:,2))) ...
+        + norm(cross(target(:,3), node.node(:,3)));
+end %function
