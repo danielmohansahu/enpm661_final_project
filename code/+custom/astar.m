@@ -22,6 +22,10 @@ current.node = start_nodes;
 current.height = start_height;
 nodes = {current};
 
+% convenience wrapper
+check_collision = @(R,z) ...
+    custom.isCollision(mesh, (inv(R)*(features+[0,0,z])')');
+
 % perform A* search
 while(~success && noOfSteps <= maxStepSize)
     % try each permutation of actions
@@ -40,9 +44,7 @@ while(~success && noOfSteps <= maxStepSize)
         end
 
         % check if this new node is in a state of collision
-        transformed_features = R*current.cumulative*...
-            (features+[0,0,new_height])';
-        if custom.isCollision(mesh, transformed_features')
+        if check_collision(R*current.cumulative,new_height)
             continue;
         end
 
@@ -71,7 +73,7 @@ while(~success && noOfSteps <= maxStepSize)
     
     % get the next lowest cost node
     [~,qidx] = min(Q(:,1));
-    current_cost = Q(qidx,1)
+    current_cost = Q(qidx,1);
     parent_idx = Q(qidx,2);
     current = nodes{parent_idx};
     
@@ -85,28 +87,22 @@ while(~success && noOfSteps <= maxStepSize)
     end
 end
 
-% if we've succeeded; try to correct for any Z motion
-% if success
-%     node = nodes.nodes(:,:,end);
-%     cost = nodes.cost(end);
-%     parent_height = nodes.height(end);
-%     rot = nodes.rotationM{end};
-% 
-%     height = parent_height - zstep;
-%     while (height > 0) && ~custom.isCollision(mesh, (node*(features+[0,0,height])')')
-%         dimn = size(nodes.cost,2) + 1;
-%         cost = cost - zstep;
-%         
-%         nodes.nodes(:,:,dimn) = node;
-%         nodes.parents(:,:,dimn) = node;
-%         nodes.parent_height(dimn) = parent_height;
-%         nodes.cost(:,dimn) = cost;
-%         nodes.height(:,dimn) = height;
-%         nodes.rotationM{dimn} = rot;
-%         
-%         parent_height = height;
-%         height = parent_height - zstep;
-%     end
-% end
+% if we've succeeded try to move in negative Z (i.e. close the gap)
+if success
+    new_node = custom.getNode(current);
+    new_node.rotation = [1,0,0;0,1,0;0,0,1];
+    new_node.height = new_node.height - zstep;
+
+    % check if this new node is in a state of collision
+    while ~check_collision(new_node.cumulative,new_node.height)
+        % add it to the node list
+        new_node.parent = size(nodes,2);
+        nodes = [nodes, new_node];
+        
+        % update for the next iteration
+        new_node = custom.getNode(new_node);
+        new_node.height = new_node.height - zstep;
+    end
+end
 
 end % function

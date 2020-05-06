@@ -115,7 +115,7 @@ material('dull');
 axis('image');
 view([-135 35]);
 hold on
-rotateV2 = path{1}.rotation * (TR2.Points - [0,0,path{1}.height])';
+rotateV2 = (path{1}.rotation * TR2.Points') - [0;0;path{1}.height];
 fv2 = triangulation(TR2.ConnectivityList, rotateV2');
 plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'Vertices', fv2.Points, ...
@@ -126,7 +126,7 @@ plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'AmbientStrength', 0.15);
 
 for i = 2:size(path,2)
-    rotateV2 = path{i}.rotation * (fv2.Points - [0,0,path{i}.height-path{i-1}.height])';
+    rotateV2 = (path{i}.rotation * fv2.Points') - [0;0;path{i}.height-path{i-1}.height];
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
 
