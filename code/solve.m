@@ -74,7 +74,6 @@ while custom.isCollision(od_mesh, od_features + [0,0,offset])
 end
 
 fprintf("New Z offset of %d\n",offset);
-od_features = od_features;
 
 %% A* Search
 % sanity check that we're not starting in collision
@@ -97,12 +96,7 @@ end
 
 %% Tracing back the path
 
-% goal node (should not be hardcoded...)
-vecMid2 = [-0.8192; 6.604e-11; 0.5736];
-vecLeft2 = [0.766; -4.795e-08; 0.6428];
-vecRight2 = [0.9397; -2.121e-08; 0.342];
-
-[path, rRotateMatrix, rHeights] = custom.backtrack(nodes, [vecMid2, vecLeft2, vecRight2]);
+path = custom.backtrack(nodes);
 
 toc
 %% Display the path
@@ -121,7 +115,7 @@ material('dull');
 axis('image');
 view([-135 35]);
 hold on
-rotateV2 = rRotateMatrix{1} * (TR2.Points - [0,0,rHeights{1}])';
+rotateV2 = path{1}.rotation * (TR2.Points - [0,0,path{1}.height])';
 fv2 = triangulation(TR2.ConnectivityList, rotateV2');
 plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'Vertices', fv2.Points, ...
@@ -131,13 +125,11 @@ plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'FaceLighting', 'gouraud', ...
                     'AmbientStrength', 0.15);
 
-i = 2;
-while (i ~= size(path,3))
-    rotateV2 = rRotateMatrix{i} * (fv2.Points - [0,0,rHeights{i}-rHeights{i-1}])';
+for i = 2:size(path,2)
+    rotateV2 = path{i}.rotation * (fv2.Points - [0,0,path{i}.height-path{i-1}.height])';
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
 
-    pause(0.02)
-    i = i + 1;
+    pause(0.01)
 end
 hold off

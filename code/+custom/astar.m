@@ -1,4 +1,4 @@
-function [success, nodes] = astar(start_nodes, target_nodes, start_height, mesh, features)
+function [success, nodes] = astar(start_nodes, target, start_height, mesh, features)
 
 % A* costs and parameters
 minCost = 1e-02;
@@ -6,118 +6,80 @@ step = [0.1; 0.1; 0.1];
 zstep = 0.1;
 zcost = 0.0001;
 maxStepSize = 1000;
-
+permutations = [[1;0;0],[0;1;0],[0;0;1],[-1;0;0],[0;-1;0],[0;0;-1]];
+    
 % other loop variables
 success = false;
 noOfSteps = 1;
 
-% initialize queues and nodes (graph structure)
+% initialize queue (costs and node indexes)
 Q = [];
-nodes.nodes = start_nodes;
-current_node = start_nodes;
-nodes.cost = 0;
-current_cost = 0;
-nodes.parents = zeros(size(start_nodes));
-nodes.parent_height = start_height;
-nodes.height = start_height;
-current_height = start_height;
-nodes.rotationM = {[1, 0, 0; 0, 1, 0; 0, 0, 1]};
-nodes.rotationC = {[1, 0, 0; 0, 1, 0; 0, 0, 1]};
-current_rot = nodes.rotationM{1};
-current_rot_c = nodes.rotationC{1};
+parent_idx = 1;
+
+% initialize starting node
+current = custom.getNode();
+current.node = start_nodes;
+current.height = start_height;
+nodes = {current};
 
 % perform A* search
 while(~success && noOfSteps <= maxStepSize)
     % try each permutation of actions
-    permutations = [[1;0;0],[0;1;0],[0;0;1],[-1;0;0],[0;-1;0],[0;0;-1]];
-    for k = 1:size(permutations,2)
-        
-        % calculate this action's rotation matrix
-        angles = step .* permutations(:,k);
-        rotateX = [1,      0,                 0;
-                    0, cosd(angles(1)),  -sind(angles(1));
-                    0, sind(angles(1)),  cosd(angles(1))];
-        rotateY = [cosd(angles(2)),  0, sind(angles(2));
-                          0,          1,       0;
-                    -sind(angles(2)),        0, cosd(angles(2))];
-        rotateZ = [cosd(angles(3)), -sind(angles(3)), 0;
-                    sind(angles(3)),  cosd(angles(3)), 0;
-                            0,               0,        1];
-        rotate = rotateX * rotateY * rotateZ; 
-        newNode = rotate * current_node;
-        rot_c = rotate * current_rot_c;
-        
+    for k = 0:size(permutations,2)
+        if k == 0
+            % this is a pure translation action
+            new_height = current.height + zstep;
+            R = custom.constructRotationMatrix([0,0,0]);
+        else
+            % this is a pure rotation action
+            new_height = current.height;
+
+            % calculate this action's rotation matrix
+            angles = step .* permutations(:,k);
+            R = custom.constructRotationMatrix(angles);
+        end
+
         % check if this new node is in a state of collision
-        if custom.isCollision(mesh, (rot_c*(features+[0,0,current_height])')')
-            continue;
-        end
-        
-        % check if this new node is already found
-        for i = 1 : size(nodes.nodes, 3)
-            if all( (newNode == nodes.nodes(:,:,i)) & current_height == nodes.height(i) )
-                continue;
-            end
-        end
-        
-        % if this isn't our goal node calculate its costs and add it
-        dimq = size(Q,1) + 1;
-        dimn = size(nodes.cost,2) + 1;
-        
-        cost = norm(cross(target_nodes(:,1), newNode(:,1))) + norm(cross(target_nodes(:,2), newNode(:,2))) + norm(cross(target_nodes(:,3), newNode(:,3)));
-        Q = [Q; [cost, dimn]];
-        
-        nodes.nodes(:,:,dimn) = newNode;
-        nodes.parents(:,:,dimn) = current_node;
-        nodes.parent_height(dimn) = current_height;
-        nodes.cost(:,dimn) = cost;
-        nodes.height(:,dimn) = current_height;
-        nodes.rotationM{dimn} = rotate;
-        nodes.rotationC{dimn} = rot_c;
-
-    end
-    
-    % we can also move in Z to avoid collisions
-    for dz = zstep:zstep
-        new_height = current_height + dz;
-        
-        % check if this new node is already found
-        for i = 1 : size(nodes.nodes, 3)
-            if all( (current_node == nodes.nodes(:,:,i)) & new_height == nodes.height(i) )
-                continue;
-            end
-        end
-        
-        % check if this would bring us into collision
-        if custom.isCollision(mesh, (current_rot_c*(features+[0,0,new_height])')')
+        transformed_features = R*current.cumulative*...
+            (features+[0,0,new_height])';
+        if custom.isCollision(mesh, transformed_features')
             continue;
         end
 
-        dimq = size(Q,1) + 1;
-        dimn = size(nodes.cost,2) + 1;
-        cost = norm(cross(target_nodes(:,1), current_node(:,1))) + norm(cross(target_nodes(:,2), current_node(:,2))) + norm(cross(target_nodes(:,3), current_node(:,3)));
-        Q = [Q; [cost, dimn]];
-        
-        nodes.nodes(:,:,dimn) = current_node;
-        nodes.parents(:,:,dimn) = current_node;
-        nodes.parent_height(dimn) = current_height;
-        nodes.cost(:,dimn) = cost;
-        nodes.height(:,dimn) = new_height;
-        nodes.rotationM{dimn} = current_rot;
-        nodes.rotationC{dimn} = current_rot_c;
+        % construct a new node from this rotation
+        new_node = custom.getNode(current);
+        new_node.rotation = R;
+        new_node.cumulative = R * current.cumulative;
+        new_node.node = R * current.node;
+        new_node.height = new_height;
+
+        % check if this new node is already found
+        isfound = @(x) (norm(x.node-new_node.node) ...
+                        + abs(x.height-new_node.height)) ...
+                        < 1e5*eps;
+        if any(cellfun(isfound,nodes))
+            continue;
+        end
+
+        % calculate its costs and add it to the list        
+        cost = custom.getCost(target, new_node);
+        Q = [Q; [cost, size(nodes,2) + 1]];
+        new_node.cost = cost;
+        new_node.parent = parent_idx;
+        nodes = [nodes, new_node];
     end
     
-    % update loop variables
+    % get the next lowest cost node
     [~,qidx] = min(Q(:,1));
-    current_cost = Q(qidx,1);
-    node_idx = Q(qidx,2);
-    current_node = nodes.nodes(:,:,node_idx);
-    current_height = nodes.height(node_idx);
-    current_rot = nodes.rotationM{node_idx};
-    current_rot_c = nodes.rotationC{node_idx};
+    current_cost = Q(qidx,1)
+    parent_idx = Q(qidx,2);
+    current = nodes{parent_idx};
+    
+    % remove this node from the queue
     Q(qidx,:) = [];
-    noOfSteps = noOfSteps + 1;
 
     % If cost is less or equal to min cost then stop the search
+    noOfSteps = noOfSteps + 1;
     if (current_cost <= minCost)
         success = true;
     end
