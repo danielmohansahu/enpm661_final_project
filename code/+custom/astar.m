@@ -12,8 +12,7 @@ success = false;
 noOfSteps = 1;
 
 % initialize queues and nodes (graph structure)
-queue = [];
-qCost = [];
+Q = [];
 nodes.nodes = start_nodes;
 current_node = start_nodes;
 nodes.cost = 0;
@@ -61,12 +60,12 @@ while(~success && noOfSteps <= maxStepSize)
         end
         
         % if this isn't our goal node calculate its costs and add it
-        dimq = size(qCost,2) + 1;
-        queue(:,:,dimq) = newNode;
-        cost = norm(cross(target_nodes(:,1), newNode(:,1))) + norm(cross(target_nodes(:,2), newNode(:,2))) + norm(cross(target_nodes(:,3), newNode(:,3)));
-        qCost(:,dimq) = cost;
-
+        dimq = size(Q,1) + 1;
         dimn = size(nodes.cost,2) + 1;
+        
+        cost = norm(cross(target_nodes(:,1), newNode(:,1))) + norm(cross(target_nodes(:,2), newNode(:,2))) + norm(cross(target_nodes(:,3), newNode(:,3)));
+        Q = [Q; [cost, dimn]];
+        
         nodes.nodes(:,:,dimn) = newNode;
         nodes.parents(:,:,dimn) = current_node;
         nodes.parent_height(dimn) = current_height;
@@ -92,13 +91,12 @@ while(~success && noOfSteps <= maxStepSize)
         if custom.isCollision(mesh, (current_rot_c*(features+[0,0,new_height])')')
             continue;
         end
-        
-        dimq = size(qCost,2) + 1;
-        cost = norm(cross(target_nodes(:,1), current_node(:,1))) + norm(cross(target_nodes(:,2), current_node(:,2))) + norm(cross(target_nodes(:,3), current_node(:,3)));
-        queue(:,:,dimq) = current_node;
-        qCost(:,dimq) = cost;
 
+        dimq = size(Q,1) + 1;
         dimn = size(nodes.cost,2) + 1;
+        cost = norm(cross(target_nodes(:,1), current_node(:,1))) + norm(cross(target_nodes(:,2), current_node(:,2))) + norm(cross(target_nodes(:,3), current_node(:,3)));
+        Q = [Q; [cost, dimn]];
+        
         nodes.nodes(:,:,dimn) = current_node;
         nodes.parents(:,:,dimn) = current_node;
         nodes.parent_height(dimn) = current_height;
@@ -109,13 +107,14 @@ while(~success && noOfSteps <= maxStepSize)
     end
     
     % update loop variables
-    [current_cost, I] = min(qCost);
-    current_node = queue(:,:,I);
-    current_height = nodes.height(I);
-    current_rot = nodes.rotationM{I};
-    current_rot_c = nodes.rotationC{I};
-    queue(:,:,I) = [];
-    qCost(:, I) = [];
+    [~,qidx] = min(Q(:,1));
+    current_cost = Q(qidx,1);
+    node_idx = Q(qidx,2);
+    current_node = nodes.nodes(:,:,node_idx);
+    current_height = nodes.height(node_idx);
+    current_rot = nodes.rotationM{node_idx};
+    current_rot_c = nodes.rotationC{node_idx};
+    Q(qidx,:) = [];
     noOfSteps = noOfSteps + 1;
 
     % If cost is less or equal to min cost then stop the search
