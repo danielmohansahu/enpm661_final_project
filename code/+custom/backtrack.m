@@ -3,7 +3,7 @@ function [path, rRotateMatrix, rHeights] = backtrack(nodes, goal_node)
 search = true;
 path = [];
 parent = nodes.nodes(:,:,end);
-parent_height = nodes.height(end);
+% parent_height = nodes.height(end);
 heights = {};
 heights{end+1} = nodes.height(end);
 rotateMatrix = {};
@@ -12,7 +12,8 @@ rotateMatrix{end+1} = nodes.rotationM{end};
 while (search)
     index = 0;
     for i = 1 : size(nodes.nodes, 3)
-        if (all(parent == nodes.nodes(:,:,i)) & parent_height == nodes.height(i))
+%         if (all(parent == nodes.nodes(:,:,i)) & parent_height == nodes.height(i))
+        if all(parent == nodes.nodes(:,:,i))
             index = i;
             break;
         end
@@ -22,11 +23,11 @@ while (search)
     end
     
     parent = nodes.parents(:,:,index);
-    parent_height = nodes.parent_height(index);
+%     parent_height = nodes.parent_height(index);
     path(:,:,end+1) = parent;
     
     nodes.parents(:,:,index) = [];
-    nodes.parent_height(index) = [];
+%     nodes.parent_height(index) = [];
     nodes.nodes(:,:,index) = [];
     nodes.cost(:, index) = [];
     
