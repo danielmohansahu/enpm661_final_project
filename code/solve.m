@@ -25,8 +25,6 @@ origin = [38.6; 33.7960; 141.5215];
 Part2 = [model2.Mesh.Nodes(1,:)', model2.Mesh.Nodes(2,:)', model2.Mesh.Nodes(3,:)'];
 k = boundary(Part2, 1);
 TR2 = triangulation(k,Part2);
-P2 = incenter(TR2);
-P2 = P2 - origin';
 
 %% Collision Detection Logic
 
@@ -47,27 +45,17 @@ vecRight2 = [0.9397; -2.121e-08; 0.342];
 Vector1 = [vecMid1, vecLeft1, vecRight1];
 Vector2 = [vecMid2, vecLeft2, vecRight2];
 
-angles = [5 10 20];
-rotateX = [1,      0,                 0;
-            0, cosd(angles(1)),  -sind(angles(1));
-            0, sind(angles(1)),  cosd(angles(1))];
-rotateY = [cosd(angles(2)),  0, sind(angles(2));
-                  0,          1,       0;
-            -sind(angles(2)),        0, cosd(angles(2))];
-rotateZ = [cosd(angles(3)), -sind(angles(3)), 0;
-            sind(angles(3)),  cosd(angles(3)), 0;
-                    0,               0,        1];
-rotateModel1 = rotateX * rotateY * rotateZ;
-Vector1_n = rotateModel1 * Vector1;
+angles = [0 -10 0];
+R1 = custom.constructRotationMatrix(angles);
+Vector1_n = R1 * Vector1;
 
 % update current state variables
-od_features = (rotateModel1 * (od_features)')';
+od_features = (R1 * (od_features)')';
 
 %% Initial Avoidance
 
 % the rotation process probably brought us into collision; 
 %  increase offset to compensate
-
 offset = 0;
 while custom.isCollision(od_mesh, od_features + [0,0,offset])
     offset = offset + 0.1;
@@ -76,32 +64,18 @@ end
 fprintf("New Z offset of %d\n",offset);
 
 %% A* Search
-% sanity check that we're not starting in collision
-if custom.isCollision(od_mesh, od_features + [0,0,offset])
-    error("Starting in a collision; this isn't allowed.");
-end
-
-% plot(od_mesh);
-% hold on;
-% rotateV1 = rotateModel1 * (TR1.Points)';
-% fv1 = triangulation(TR1.ConnectivityList, rotateV1');
-% trisurf(fv1);
 
 % perform A* path search
 [success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
 if ~success
     error("Path search failed.");
 end
-
-
-%% Tracing back the path
-
 path = custom.backtrack(nodes);
 
 toc
 %% Display the path
 
-rotateV1 = rotateModel1 * (TR1.Points)';
+rotateV1 = R1 * (TR1.Points)';
 fv1 = triangulation(TR1.ConnectivityList, rotateV1');
 patch('Faces', fv1.ConnectivityList, 'Vertices', fv1.Points, ...
       'FaceColor', [0.8 0.8 1.0], 'EdgeColor', 'k', ...
@@ -125,11 +99,11 @@ plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'FaceLighting', 'gouraud', ...
                     'AmbientStrength', 0.15);
 
+% plot each action as an individual frame
 for i = 2:size(path,2)
     rotateV2 = (path{i}.rotation * fv2.Points') - [0;0;path{i}.height-path{i-1}.height];
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
-
     pause(0.01)
 end
 hold off

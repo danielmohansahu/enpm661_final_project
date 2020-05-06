@@ -1,7 +1,7 @@
 function [success, nodes] = astar(start_nodes, target, start_height, mesh, features)
 
 % A* costs and parameters
-minCost = 1e-02;
+minCost = 5e-03;
 step = [0.1; 0.1; 0.1];
 zstep = 0.1;
 zcost = 0.0001;
