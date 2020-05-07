@@ -9,7 +9,7 @@ bounds = [...
     [-20,40];...
     [-20,40];
     [start_height,10]];
-steps = [0.25, 0.25, 0.25, 0.5];
+steps = [0.1, 0.1, 0.1, 0.5];
 maxStepSize = 1000;
     
 % other loop variables
@@ -90,11 +90,18 @@ while(~success && noOfSteps <= maxStepSize)
         parent_idx = size(G,2);
 
         % check if this is our goal node:
-        if norm(new_node.node - target) < minDist
+        if custom.getCost(target, new_node) < minDist
             success = true;
             break;
         else
             norm(new_node.node - target)
+        end
+        
+        if i == num_nodes
+            random_node.node
+            new_node.node
+            closest_node.node
+            success;
         end
     end
     
