@@ -108,6 +108,6 @@ for i = 2:size(path,2)
     rotateV2 = (path{i}.rotation * fv2.Points') - [0;0;path{i}.height-path{i-1}.height];
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
-    pause(0.01)
+    pause(0.1)
 end
 hold off

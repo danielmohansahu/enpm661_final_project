@@ -2,17 +2,18 @@
 function [success, G] = rrt(start_nodes, target, start_height, mesh, features)
 
 % RRT costs and parameters
-minCost = 0.2;
+minCost = 1e-1;
 % bounds are (start, range) for each degree of freedom
 bounds = [...
     [-30,60];...
     [-30,60];...
     [-30,60];
-    [start_height,100]];
-steps = [0.25, 0.25, 0.25, 5];
-zstep = 0.1;
-minDist = 0.05;
-maxStepSize = 1000;
+    [start_height,20]];
+% steps are how much to increment from closest to random node (deg,m)
+steps = [3, 3, 3, 1];
+zstep = 0.25;
+minDist = 0.0;
+maxStepSize = 10000;
 
 % other loop variables
 success = false;
@@ -26,6 +27,7 @@ current.height = start_height;
 
 % initialize graph
 G = {current};
+N = [current.node];
 
 % convenience functions
 check_collision = @(R,z) ...
@@ -51,9 +53,10 @@ while(~success && noOfSteps <= maxStepSize)
     random_node.height = z;
     random_node.node = R*start_nodes;
 
-    distance = @(n) norm(n.node-random_node.node) ...
-                    + abs(n.height-random_node.height);
-    distances = cellfun(distance, G);
+    % distance = @(n) norm(n.node-random_node.node) ...
+    %                  + abs(n.height-random_node.height);
+    % distances = cellfun(distance, G);
+    distances = sum((N-random_node.node).*(N-random_node.node),1:2);
     
     % make sure we're not too close to an existing node
     [dist,parent_idx] = min(distances);
@@ -95,6 +98,7 @@ while(~success && noOfSteps <= maxStepSize)
         new_node.height = dz + new_node.height;
         
         G = [G, new_node];
+        N(:,:,size(N,3)+1) = new_node.node;
         parent_idx = size(G,2);
 
         % check if this is our goal node:
@@ -116,12 +120,13 @@ end
 % if we've succeeded try to move in negative Z (i.e. close the gap)
 if success
     new_node = custom.getNode(current);
+    new_node.rotation = [1,0,0;0,1,0;0,0,1];
     new_node.height = new_node.height - zstep;
 
     % check if this new node is in a state of collision
     while ~check_collision(new_node.cumulative,new_node.height)
         % add it to the node list
-        new_node.parent = size(G,2)
+        new_node.parent = size(G,2);
         G = [G, new_node];
         
         % update for the next iteration
