@@ -45,7 +45,7 @@ vecRight2 = [0.9397; -2.121e-08; 0.342];
 Vector1 = [vecMid1, vecLeft1, vecRight1];
 Vector2 = [vecMid2, vecLeft2, vecRight2];
 
-angles = [0 -10 0];
+angles = [5 10 20];
 R1 = custom.constructRotationMatrix(angles);
 Vector1_n = R1 * Vector1;
 
@@ -65,8 +65,12 @@ fprintf("New Z offset of %d\n",offset);
 
 %% A* Search
 
-% perform A* path search
-[success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
+% % perform A* path search
+% [success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
+
+% perform RRT path search
+[success, nodes] = custom.rrt(Vector2,Vector1_n,offset,od_mesh,od_features);
+
 if ~success
     error("Path search failed.");
 end
