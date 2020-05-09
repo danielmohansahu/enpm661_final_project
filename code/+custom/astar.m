@@ -51,6 +51,7 @@ while(~success && noOfSteps <= maxStepSize)
         % construct a new node from this rotation
         new_node = custom.getNode(current);
         new_node.rotation = R;
+        new_node.translation = [1,0,0;0,1,0;0,0,1]';
         new_node.cumulative = R * current.cumulative;
         new_node.node = R * current.node;
         new_node.height = new_height;
@@ -91,6 +92,7 @@ end
 if success
     new_node = custom.getNode(current);
     new_node.rotation = [1,0,0;0,1,0;0,0,1];
+    new_node.translation = [1,0,0;0,1,0;0,0,1]';
     new_node.height = new_node.height - zstep;
 
     % check if this new node is in a state of collision
