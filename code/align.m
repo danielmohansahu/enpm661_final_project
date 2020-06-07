@@ -4,8 +4,17 @@ if ~( strcmp(method, "astar") || strcmp(method, "rrt") )
     error("Valid methods are ['astar', 'rrt']")
 end
 if nargin < 2
-    % @todo make this random
-    angles = [5 10 20];
+    fprintf("Generating random initial offset.\n");
+    angles = [
+        randi(60) randi(60), randi(60)
+        ] - 30;
+else
+    % sanity check input
+    if size(angles) ~= 3
+        error("Input angle must be a 3D vector of angles (degrees) between [-30,30]");
+    elseif max(abs(angles)) > 30
+        error("Input angles must all be within [-30,30]");
+    end
 end
 
 fprintf("Method: %s\n", method);
