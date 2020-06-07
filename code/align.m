@@ -1,6 +1,16 @@
-close all
-clear all
-clc
+function align(method, angles)
+%% parse input arguments
+if ~( strcmp(method, "astar") || strcmp(method, "rrt") )
+    error("Valid methods are ['astar', 'rrt']")
+end
+if nargin < 2
+    % @todo make this random
+    angles = [5 10 20];
+end
+
+fprintf("Method: %s\n", method);
+fprintf('Initial Rotation: (%d, %d, %d)\n', angles);
+
 % turn off point warnings
 warning('off','MATLAB:triangulation:PtsNotInTriWarnId');
 
@@ -45,7 +55,6 @@ vecRight2 = [0.9397; -2.121e-08; 0.342];
 Vector1 = [vecMid1, vecLeft1, vecRight1];
 Vector2 = [vecMid2, vecLeft2, vecRight2];
 
-angles = [5 10 20];
 R1 = custom.constructRotationMatrix(angles);
 Vector1_n = R1 * Vector1;
 
@@ -61,15 +70,19 @@ while custom.isCollision(od_mesh, od_features + [0,0,offset])
     offset = offset + 0.1;
 end
 
-fprintf("New Z offset of %d\n",offset);
+fprintf("Starting Z offset: %d\n",offset);
 
-%% A* Search
+%% Search
 
-% % perform A* path search
-% [success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
-
-% perform RRT path search
-[success, nodes] = custom.rrt(Vector2,Vector1_n,offset,od_mesh,od_features);
+if strcmp(method, "astar")
+    % perform A* path search
+    [success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
+elseif strcmp(method, "rrt")
+    % perform RRT path search
+    [success, nodes] = custom.rrt(Vector2,Vector1_n,offset,od_mesh,od_features);
+else
+    error("Given invalid method.");
+end
 
 if ~success
     error("Path search failed.");
@@ -117,3 +130,5 @@ for i = 2:size(path,2)
 end
 close(v);
 hold off
+
+end %function
