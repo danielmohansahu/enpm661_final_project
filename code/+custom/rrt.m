@@ -9,15 +9,15 @@ bounds = [...
     [-30,60];...
     [-30,60];
     [start_height,20]];
+
 % steps are how much to increment from closest to random node (deg,m)
-steps = [3, 3, 3, 1];
+steps = [1, 1, 1, 5];
 zstep = 0.25;
 minDist = 0.0;
-maxStepSize = 10000;
+maxNodes = 7500;
 
 % other loop variables
 success = false;
-noOfSteps = 1;
 mincost = 1000;
 
 % initialize starting node
@@ -37,8 +37,8 @@ get_random_R = @() custom.constructRotationMatrix(...
 get_random_z = @() rand()*bounds(4,2) + bounds(4,1);
 
 % perform search
-while(~success && noOfSteps <= maxStepSize)
-    % get a random node in the workspace
+while(~success & size(G) <= maxNodes)
+        % get a random node in the workspace
     R = get_random_R();
     z = get_random_z();
     while check_collision(R,z)
@@ -109,12 +109,9 @@ while(~success && noOfSteps <= maxStepSize)
             break;
         else
             norm(new_node.node - target);
-            mincost = min(mincost,cost)
+            mincost = min(mincost,cost);
         end
     end
-    
-    % update loop variables
-    noOfSteps = noOfSteps + 1;
 end
 
 % if we've succeeded try to move in negative Z (i.e. close the gap)

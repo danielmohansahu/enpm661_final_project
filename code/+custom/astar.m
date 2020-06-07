@@ -1,10 +1,9 @@
 function [success, nodes] = astar(start_nodes, target, start_height, mesh, features)
 
 % A* costs and parameters
-minCost = 5e-03;
+minCost = 1e-02;
 step = [0.1; 0.1; 0.1];
 zstep = 0.1;
-zcost = 0.0001;
 maxStepSize = 1000;
 permutations = [[1;0;0],[0;1;0],[0;0;1],[-1;0;0],[0;-1;0],[0;0;-1]];
     
