@@ -1,9 +1,9 @@
 function [success, nodes] = astar(start_nodes, target, start_height, mesh, features)
 
 % A* costs and parameters
-minCost = 1e-02;
+minCost = 1e-01;
 step = [0.1; 0.1; 0.1];
-zstep = 0.1;
+zstep = 0.25;
 maxStepSize = 1000;
 permutations = [[1;0;0],[0;1;0],[0;0;1],[-1;0;0],[0;-1;0],[0;0;-1]];
     
@@ -23,7 +23,7 @@ nodes = {current};
 
 % convenience wrapper
 check_collision = @(R,z) ...
-    custom.isCollision(mesh, (inv(R)*(features+[0,0,z])')');
+    custom.isCollision(mesh, (R\(features+[0,0,z])')');
 
 % perform A* search
 while(~success && noOfSteps <= maxStepSize)

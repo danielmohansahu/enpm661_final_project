@@ -5,16 +5,16 @@ function [success, G] = rrt(start_nodes, target, start_height, mesh, features)
 minCost = 1e-1;
 % bounds are (start, range) for each degree of freedom
 bounds = [...
-    [-30,60];...
-    [-30,60];...
-    [-30,60];
-    [start_height,20]];
+    [0,30];...
+    [0,30];...
+    [0,30];
+    [start_height,50]];
 
 % steps are how much to increment from closest to random node (deg,m)
 steps = [1, 1, 1, 5];
 zstep = 0.25;
 minDist = 0.0;
-maxNodes = 7500;
+maxNodes = 5000;
 
 % other loop variables
 success = false;
