@@ -5,10 +5,11 @@ Repository of code for ENPM661 Final Project (Spring 2020)
 ## Usage:
 
 The core functionality is wrapped in the MATLAB interface function `align.m`. This function accepts two arguments: 
- - the path search "method" ("astar" or "rrt") 
- - an optional initial angular offset (in degrees). If unuspplied this is generated randomly.
+ - the path search method ("astar" or "rrt") 
+ - an optional initial angular offset (in degrees). If unsupplied this is generated randomly.
 
 ``` matlab
+cd code
 % use A* to solve the given initial conditions
 align("astar", [5, 10, 20])
 % use RRT to solve a random initial condition
