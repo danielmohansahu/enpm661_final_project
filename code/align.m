@@ -1,19 +1,18 @@
 function align(method, angles)
 %% parse input arguments
+max_angle = 30;
 if ~( strcmp(method, "astar") || strcmp(method, "rrt") )
     error("Valid methods are ['astar', 'rrt']")
 end
 if nargin < 2
     fprintf("Generating random initial offset.\n");
-    angles = [
-        randi(60) randi(60), randi(60)
-        ] - 30;
+    angles = [randi(max_angle) randi(max_angle), randi(max_angle)];
 else
     % sanity check input
     if size(angles) ~= 3
-        error("Input angle must be a 3D vector of angles (degrees) between [-30,30]");
-    elseif max(abs(angles)) > 30
-        error("Input angles must all be within [-30,30]");
+        error("Input angle must be a 3D vector of angles (degrees) between [0,%d]", max_angle);
+    elseif max(abs(angles)) > max_angle
+        error("Input angles must all be within [0,%d]", max_angle);
     end
 end
 
@@ -24,7 +23,6 @@ fprintf('Initial Rotation: (%d, %d, %d)\n', angles);
 warning('off','MATLAB:triangulation:PtsNotInTriWarnId');
 
 %% Import the stl file
-tic
 model1 = createpde;
 gd1 = importGeometry(model1,'../models/Part1.STL');
 generateMesh(model1);
@@ -82,7 +80,7 @@ end
 fprintf("Starting Z offset: %d\n",offset);
 
 %% Search
-
+tic
 if strcmp(method, "astar")
     % perform A* path search
     [success, nodes] = custom.astar(Vector2,Vector1_n,offset,od_mesh,od_features);
@@ -99,7 +97,12 @@ end
 path = custom.backtrack(nodes);
 
 toc
+
+%% Calculate Path Metrics
+% @todo calculate cumulative euclidean distance of path
+
 %% Display the path
+close all
 
 rotateV1 = R1 * (TR1.Points)';
 fv1 = triangulation(TR1.ConnectivityList, rotateV1');
