@@ -97,9 +97,11 @@ end
 path = custom.backtrack(nodes);
 
 toc
-
 %% Calculate Path Metrics
-% @todo calculate cumulative euclidean distance of path
+
+dist = custom.getDistance(path);
+fprintf("Solved path travels %d\n",dist);
+
 
 %% Display the path
 close all
