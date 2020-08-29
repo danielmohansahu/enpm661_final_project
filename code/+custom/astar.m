@@ -1,10 +1,12 @@
 function [success, nodes] = astar(start_nodes, target, start_height, mesh, features)
 
 % A* costs and parameters
-minCost = 1e-01;
-step = [0.1; 0.1; 0.1];
+minCost = 1.0e-01;
+step = [0.25; 0.25; 0.25];
 zstep = 0.25;
-maxStepSize = 1000;
+maxzcorrection = 100;
+same_node_threshold = 0.001;
+maxStepSize = 2000;
 permutations = [[1;0;0],[0;1;0],[0;0;1],[-1;0;0],[0;-1;0],[0;0;-1]];
     
 % other loop variables
@@ -28,10 +30,14 @@ check_collision = @(R,z) ...
 % perform A* search
 while(~success && noOfSteps <= maxStepSize)
     % try each permutation of actions
-    for k = 0:size(permutations,2)
-        if k == 0
+    for k = 1:size(permutations,2)+2
+        if k > size(permutations,2)
             % this is a pure translation action
-            new_height = current.height + zstep;
+            if k == size(permutations,2)+1
+                new_height = current.height + zstep;
+            elseif k == size(permutations,2)+2
+                new_height = current.height - zstep;
+            end
             R = custom.constructRotationMatrix([0,0,0]);
         else
             % this is a pure rotation action
@@ -57,7 +63,7 @@ while(~success && noOfSteps <= maxStepSize)
         % check if this new node is already found
         isfound = @(x) (norm(x.node-new_node.node) ...
                         + abs(x.height-new_node.height)) ...
-                        < 1e5*eps;
+                        < same_node_threshold;
         if any(cellfun(isfound,nodes))
             continue;
         end
@@ -84,6 +90,7 @@ while(~success && noOfSteps <= maxStepSize)
     if (current_cost <= minCost)
         success = true;
     end
+    % fprintf("COST: %d\tHEIGHT: %d\tQ: %d\n",current_cost, current.height, size(Q,1));
 end
 
 % if we've succeeded try to move in negative Z (i.e. close the gap)
@@ -91,16 +98,31 @@ if success
     new_node = custom.getNode(current);
     new_node.rotation = [1,0,0;0,1,0;0,0,1];
     new_node.height = new_node.height - zstep;
+    cumulative_translation = 0;
+    correction_nodes = [];
+    use_correction = true;
 
     % check if this new node is in a state of collision
     while ~check_collision(new_node.cumulative,new_node.height)
         % add it to the node list
         new_node.parent = size(nodes,2);
-        nodes = [nodes, new_node];
+        correction_nodes = [correction_nodes, new_node];
         
         % update for the next iteration
         new_node = custom.getNode(new_node);
         new_node.height = new_node.height - zstep;
+        cumulative_translation = cumulative_translation + zstep;
+        
+        % check if we're going too far (something's wrong)
+        if cumulative_translation > maxzcorrection
+            fprintf('Unable to reconnect with parent; path search returned an odd result.\n');
+            use_correction = false;
+            break;
+        end
+    end
+    if use_correction
+        % append our correction nodes
+        nodes = [nodes, correction_nodes];
     end
 end
 

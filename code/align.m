@@ -1,18 +1,25 @@
-function align(method, angles)
+function align(method, angles, video_out)
 %% parse input arguments
-max_angle = 30;
+max_angle = 90;
 if ~( strcmp(method, "astar") || strcmp(method, "rrt") )
     error("Valid methods are ['astar', 'rrt']")
 end
 if nargin < 2
     fprintf("Generating random initial offset.\n");
-    angles = [randi(max_angle) randi(max_angle), randi(max_angle)];
-else
+    angles = [randi(2*max_angle)-max_angle, randi(2*max_angle)-max_angle, randi(2*max_angle)-max_angle];
+else    
     % sanity check input
     if size(angles) ~= 3
-        error("Input angle must be a 3D vector of angles (degrees) between [0,%d]", max_angle);
+        error("Input angle must be a 3D vector of angles (degrees) between [-%d,%d]", max_angle);
     elseif max(abs(angles)) > max_angle
-        error("Input angles must all be within [0,%d]", max_angle);
+        error("Input angles must all be within [%d,%d]", max_angle);
+    end
+    
+    if nargin == 3 && boolean(video_out)
+        fprintf("Saving to video file.\n");
+        video_out = true;
+    else
+        video_out = false;
     end
 end
 
@@ -23,12 +30,13 @@ fprintf('Initial Rotation: (%d, %d, %d)\n', angles);
 warning('off','MATLAB:triangulation:PtsNotInTriWarnId');
 
 %% Import the stl file
+fprintf("Generating meshes...");
 model1 = createpde;
-gd1 = importGeometry(model1,'../models/Part1.STL');
+gd1 = importGeometry(model1,'../models/test3.STL');
 generateMesh(model1);
 
 model2 = createpde;
-gd2 = importGeometry(model2,'../models/Part2.STL');
+gd2 = importGeometry(model2,'../models/test4.STL');
 generateMesh(model2);
 
 %% Finding a boundary
@@ -80,6 +88,7 @@ end
 fprintf("Starting Z offset: %d\n",offset);
 
 %% Search
+fprintf("Searching...");
 tic
 if strcmp(method, "astar")
     % perform A* path search
@@ -130,19 +139,28 @@ plot_handle = patch('Faces', fv2.ConnectivityList, ...
                     'FaceLighting', 'gouraud', ...
                     'AmbientStrength', 0.15);
 
-v = VideoWriter('output.avi');
-open(v);
+if video_out
+    v = VideoWriter('output.avi');
+    open(v);
+end
                 
 % plot each action as an individual frame
 for i = 2:size(path,2)
     rotateV2 = (path{i}.rotation * fv2.Points') - [0;0;path{i}.height-path{i-1}.height];
     fv2 = triangulation(fv2.ConnectivityList, rotateV2');
     set(plot_handle, 'Faces',fv2.ConnectivityList, 'Vertices',fv2.Points);
-    
-    frame = getframe(gcf);
-    writeVideo(v,frame);
+
+    if video_out
+        frame = getframe(gcf);
+        writeVideo(v,frame);
+    else
+        pause(0.1);
+    end
 end
-close(v);
+
+if video_out
+    close(v);
+end
 hold off
 
 end %function
