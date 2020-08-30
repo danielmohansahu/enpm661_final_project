@@ -14,15 +14,14 @@ else
     elseif max(abs(angles)) > max_angle
         error("Input angles must all be within [%d,%d]", max_angle);
     end
-    
-    if nargin == 3 && boolean(video_out)
-        fprintf("Saving to video file.\n");
-        video_out = true;
-    else
-        video_out = false;
-    end
 end
-
+if nargin == 3 && boolean(video_out)
+    fprintf("Saving to video file.\n");
+    video_out = true;
+else
+    video_out = false;
+end
+    
 fprintf("Method: %s\n", method);
 fprintf('Initial Rotation: (%d, %d, %d)\n', angles);
 
