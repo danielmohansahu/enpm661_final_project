@@ -6,7 +6,7 @@ step = [0.25; 0.25; 0.25];
 zstep = 0.25;
 maxzcorrection = 100;
 same_node_threshold = 0.001;
-maxStepSize = 2000;
+maxStepSize = 10000;
 permutations = [[1;0;0],[0;1;0],[0;0;1],[-1;0;0],[0;-1;0],[0;0;-1]];
     
 % other loop variables
@@ -122,7 +122,9 @@ if success
     end
     if use_correction
         % append our correction nodes
-        nodes = [nodes, correction_nodes];
+        for i=1:size(correction_nodes,2)
+            nodes = [nodes, correction_nodes(1,i)];
+        end
     end
 end
 
